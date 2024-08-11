@@ -1,4 +1,4 @@
-package bam
+package uboa
 
 import (
 	"bytes"
@@ -17,7 +17,7 @@ import (
 	"gonum.org/v1/gonum/stat"
 )
 
-func (b *Bam) Send(ctx context.Context, outChan chan<- *Metrics) {
+func (b *Uboa) Send(ctx context.Context, outChan chan<- *Metrics) {
 	req, err := http.NewRequest(b.Method, b.URL, bytes.NewBufferString(b.Body))
 	if err != nil {
 		outChan <- &Metrics{
@@ -59,7 +59,7 @@ func (b *Bam) Send(ctx context.Context, outChan chan<- *Metrics) {
 
 	req = req.WithContext(httptrace.WithClientTrace(ctx, trace))
 	var resp *http.Response
-	maxRetries := 3
+	maxRetries := b.MaxRetries
 	baseDelay := 100 * time.Millisecond
 
 	for i := 0; i < maxRetries; i++ {
@@ -68,7 +68,7 @@ func (b *Bam) Send(ctx context.Context, outChan chan<- *Metrics) {
 			break
 		}
 
-		if i < maxRetries-1 { // Don't sleep after the last attempt
+		if i < maxRetries-1 {
 			time.Sleep(baseDelay * time.Duration(1<<uint(i))) // Exponential backoff
 		}
 	}
@@ -102,6 +102,9 @@ func (b *Bam) Send(ctx context.Context, outChan chan<- *Metrics) {
 		return
 	}
 
+	respSize, _ := io.Copy(io.Discard, resp.Body)
+	resp.Body.Close()
+
 	b.Bar.Add(1)
 	t5 := time.Now()
 
@@ -111,6 +114,7 @@ func (b *Bam) Send(ctx context.Context, outChan chan<- *Metrics) {
 		ServerProcessing: float64(t4.Sub(t3).Milliseconds()),
 		ContentTransfer:  float64(t5.Sub(t4).Milliseconds()),
 		StatusCode:       resp.StatusCode,
+		RespSize:         respSize,
 	}
 
 	out.RespDuration = out.DNSLookup + out.TCPConn + out.ServerProcessing + out.ContentTransfer
@@ -119,12 +123,13 @@ func (b *Bam) Send(ctx context.Context, outChan chan<- *Metrics) {
 
 }
 
-func (b *Bam) Load() *ResultMetrics {
+func (b *Uboa) Load() *ResultMetrics {
 	var tcpDur []float64
 	var respDur []float64
 	var serverDur []float64
 	var transferDur []float64
 	var failedRequests int
+	var totalRespSize int64
 
 	ag := make(map[string]AggregateMetrics)
 	s := &SummaryMetrics{
@@ -200,6 +205,8 @@ func (b *Bam) Load() *ResultMetrics {
 			s.StatusCodes[mm.StatusCode]++
 		}
 
+		totalRespSize += mm.RespSize
+
 		if currTime := time.Now(); currTime.Sub(prev) > time.Second {
 			t := time.Now().Format("15:04:05")
 			var a AggregateMetrics
@@ -243,13 +250,14 @@ func (b *Bam) Load() *ResultMetrics {
 			prev = time.Now()
 
 		}
-
-		duration := time.Since(start).Seconds()
-		s.RequestsPerSecond = float64(s.TotalRequests) / duration
-		s.ErrorPercentage = float64(failedRequests) / float64(s.TotalRequests) * 100
-		slices.Sort(respDur)
-		s.AvgRespTime = stat.Mean(respDur, nil)
 	}
+
+	duration := time.Since(start).Seconds()
+	s.RequestsPerSecond = float64(s.TotalRequests) / duration
+	s.ErrorPercentage = float64(failedRequests) / float64(s.TotalRequests) * 100
+	slices.Sort(respDur)
+	s.AvgRespTime = stat.Mean(respDur, nil)
+	s.RespSizePerSec = float64(totalRespSize) / duration
 
 	return &ResultMetrics{
 		*s,

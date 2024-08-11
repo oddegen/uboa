@@ -9,10 +9,10 @@ import (
 	"runtime"
 	"time"
 
-	bam "github.com/oddegen/bam/internal/pkg"
+	"github.com/oddegen/bam/internal/uboa"
 )
 
-func Render(data bam.ResultMetrics, filename string, skip bool) error {
+func Render(data uboa.ResultMetrics, filename string, skip bool) error {
 
 	htmlTemplate, err := os.ReadFile("ui/result.tmpl")
 	if err != nil {

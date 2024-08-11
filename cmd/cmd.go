@@ -12,7 +12,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/gosuri/uitable"
-	bam "github.com/oddegen/bam/internal/pkg"
+	"github.com/oddegen/bam/internal/uboa"
 	"github.com/oddegen/bam/ui"
 	"github.com/urfave/cli/v2"
 )
@@ -51,28 +51,21 @@ func Run() {
 				Aliases: []string{"j"},
 				Usage:   "Output results in JSON format",
 			},
-			&cli.StringFlag{
-				Name:        "html",
-				Aliases:     []string{"html-output"},
-				Usage:       "Generate an HTML report and save to specified file",
-				Value:       time.Now().Format("2006-01-02") + "_upoa-result.html",
-				DefaultText: "yyyy-mm-dd_upoa-result.html",
+			&cli.BoolFlag{
+				Name:    "html",
+				Aliases: []string{"html-output"},
+				Usage:   "Output results in HTML format",
 			},
 			&cli.BoolFlag{
 				Name:    "skip-preview",
 				Aliases: []string{"S"},
 				Usage:   "Skip automatic preview of results",
 			},
-			&cli.BoolFlag{
-				Name:    "plain",
-				Aliases: []string{"p"},
-				Usage:   "Output results in plain, machine-readable format",
-			},
 			&cli.StringFlag{
-				Name:    "output",
-				Aliases: []string{"o"},
-				Usage:   "File path for saving the output",
-				Value:   "output",
+				Name:        "output",
+				Aliases:     []string{"o"},
+				Usage:       "File path for saving the output",
+				DefaultText: "{yyyy-mm-dd}_{method}_upoa-result",
 			},
 			&cli.IntFlag{
 				Name:    "concurrency",
@@ -97,6 +90,12 @@ func Run() {
 				Aliases: []string{"k"},
 				Usage:   "Enable HTTP keep-alive connections",
 			},
+			&cli.IntFlag{
+				Name:    "max-retries",
+				Aliases: []string{"r"},
+				Usage:   "Maximum allowed retry before erroring",
+				Value:   3,
+			},
 		},
 		Action: validate,
 	}
@@ -113,14 +112,14 @@ func validate(c *cli.Context) error {
 	method := c.String("method")
 	headers := c.String("headers")
 	json := c.Bool("json")
-	html := c.String("html")
+	html := c.Bool("html")
 	skip := c.Bool("skip-preview")
-	plain := c.Bool("plain")
 	outputFile := c.String("output")
 	concurrency := c.Int("concurrency")
 	requests := c.Int("requests")
 	keepAlive := c.Bool("keep-alive")
 	timeout := c.Int("timeout")
+	maxRetries := c.Int("max-retries")
 
 	if concurrency == 0 {
 		return errors.New("error: Concurrency level cannot be set to: 0")
@@ -154,41 +153,71 @@ func validate(c *cli.Context) error {
 		return errors.New("error: invalid HTTP method")
 	}
 
-	b := &bam.Bam{
+	if outputFile == "" {
+		outputFile = time.Now().Format("2006-01-02") + "_" + strings.ToLower(method) + "_upoa-result"
+	}
+
+	b := &uboa.Uboa{
 		URL:               urlstr,
 		Method:            method,
 		Headers:           headerMap,
 		ExportJson:        json,
-		Plain:             plain,
-		HtmlFile:          html,
+		ExportHtml:        html,
 		Clients:           concurrency,
 		Requests:          requests,
-		OutputFile:        outputFile,
+		OutputFileName:    outputFile,
 		DisableKeepAlives: keepAlive,
 		Timeout:           time.Duration(timeout),
+		MaxRetries:        maxRetries,
 	}
 
 	a := b.Load()
-	b.Template = &bam.Template{
+	b.Template = &uboa.Template{
 		Result: a,
+	}
+
+	return output(b, skip)
+}
+
+func output(b *uboa.Uboa, skip bool) error {
+
+	if b.ExportJson {
+		outputFileName := b.OutputFileName
+		if !strings.HasSuffix(outputFileName, "json") {
+			outputFileName = b.OutputFileName + ".json"
+		}
+		err := outPutJSON(outputFileName, b.Template.Result)
+		if err != nil {
+			return err
+		}
+	}
+
+	if b.ExportHtml {
+		outputFileName := b.OutputFileName
+		if !strings.HasSuffix(outputFileName, ".html") {
+			outputFileName = b.OutputFileName + ".html"
+		}
+		err := ui.Render(*b.Template.Result, outputFileName, skip)
+		if err != nil {
+			return err
+		}
 	}
 
 	table := uitable.New()
 	table.MaxColWidth = 80
 
-	table.AddRow("Total Requests:", fmt.Sprintf("%d reqs", a.TotalRequests))
-	table.AddRow("Average Response Time:", fmt.Sprintf("%.2f ms", a.AvgRespTime))
-	table.AddRow("Error rate:", fmt.Sprintf("%.2f%%", a.ErrorPercentage))
-	table.AddRow("Request Per Second:", fmt.Sprintf("%.2f req/s", a.RequestsPerSecond))
+	table.AddRow("Total Requests:", fmt.Sprintf("%d reqs", b.Template.Result.TotalRequests))
+	table.AddRow("Average Response Time:", fmt.Sprintf("%.2f ms", b.Template.Result.AvgRespTime))
+	table.AddRow("Error rate:", fmt.Sprintf("%.2f%%", b.Template.Result.ErrorPercentage))
+	table.AddRow("Request Per Second:", fmt.Sprintf("%.2f req/s", b.Template.Result.RequestsPerSecond))
+	table.AddRow("ResponseSize Per Second:", fmt.Sprintf("%.2f bytes/s", b.Template.Result.RespSizePerSec))
 	fmt.Println("\n\nSummary:")
 	fmt.Println(table)
 
-	outPutJSON(b.OutputFile, a)
-	err := ui.Render(*a, b.HtmlFile, skip)
-	return err
+	return nil
 }
 
-func outPutJSON(fileName string, metrics *bam.ResultMetrics) error {
+func outPutJSON(fileName string, metrics *uboa.ResultMetrics) error {
 	f, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		return err

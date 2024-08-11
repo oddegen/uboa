@@ -5,90 +5,107 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Metrics Visualization</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-trendline/dist/chartjs-plugin-trendline.min.js"></script>
     <style>
       .container {
-        width: 80%;
-        margin: auto;
+        display: flex;
+        justify-content: space-between;
+        background-color: rgb(249, 249, 249);
+        padding: 5px;
+        border-radius: 4px;
+        margin-bottom: 10px;
       }
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 20px;
+      .container-detail {
+        display: flex;
+        flex-direction: column;
+        justify-content: start;
+        padding: 5px;
       }
-      th,
-      td {
-        border: 1px solid #ddd;
-        padding: 8px;
-        text-align: left;
+      .title {
+        color: #6b6b6b;
+        font-size: 12px;
+        line-height: 16px;
+        white-space: nowrap;
       }
-      th {
-        background-color: #f4f4f4;
+      .metric-data {
+        font-weight: 500;
+        font-size: 14px;
+        line-height: 22px;
+      }
+
+      h1 {
+        font-size: 24px;
+        font-weight: 600;
+        line-height: 28px;
+        letter-spacing: -0.72px;
       }
     </style>
   </head>
-  <body>
-    <div class="container">
-  <h1>Result Metrics</h1>
-  <h2>Summary Metrics</h2>
-  <table>
-    <tr>
-      <th>Total Requests:</th>
-      <td>{{ .SummaryMetrics.TotalRequests }}</td>
-    </tr>
-    <tr>
-      <th>Error Percentage:</th>
-      <td>{{ printf "%.2f%%" .SummaryMetrics.ErrorPercentage }}</td>
-    </tr>
-    <tr>
-      <th>Requests Per Second:</th>
-      <td>{{ printf "%.2f req/sec" .SummaryMetrics.RequestsPerSecond }}</td>
-    </tr>
-    <tr>
-      <th>Average Response Time:</th>
-      <td>{{ printf "%.2f sec" .SummaryMetrics.AvgRespTime }}</td>
-    </tr>
-  </table>
-
-  <h2>Status Codes Histogram</h2>
-  <canvas id="status_codes_histogram" width="800" height="400"></canvas>
-  <script>
-    var ctx = document.getElementById('status_codes_histogram').getContext('2d');
-    var chart = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: [{{ range $key, $value := .SummaryMetrics.StatusCodes }}{{ $key }},{{ end }}],
-        datasets: [{
-          label: 'Status Codes',
-          data: [{{ range $key, $value := .SummaryMetrics.StatusCodes }}{{ $value }},{{ end }}],
-          backgroundColor: 'rgba(255, 99, 132, 0.2)',
-          borderColor: 'rgba(255, 99, 132, 1)',
-          borderWidth: 1
-        }]
-      },
-      options: {
-        scales: {
-          yAxes: [{
-            ticks: {
-              beginAtZero: true
-            }
-          }]
-        }
-      }
-    });
-  </script>
-
-  <h2>Aggregate Metrics Line Charts</h2>
-    <h3>Aggregate Metrics</h3>
-    <canvas id="aggregate_metrics_line_chart" width="800" height="400"></canvas>
+  <body style="padding: 16px; box-sizing: border-box; margin: 48px">
+    <h1>Performance test report - <span id="perf_test_time"></span></h1>
     <script>
-      var ctx = document.getElementById('aggregate_metrics_line_chart').getContext('2d');
+      const perfTestHeading = document.getElementById("perf_test_time");
+      const currentDate = new Date();
+      const month = currentDate.toLocaleString("en-US", { month: "short" });
+      const day = currentDate.getDate();
+      const year = currentDate.getFullYear();
+
+      const formattedDate = `${month} ${day}, ${year}`;
+      perfTestHeading.innerText = formattedDate;
+    </script>
+    <div class="container">
+      <div class="container-detail">
+        <label class="title">Total Requests:</label>
+        <span class="metric-data">{{ .SummaryMetrics.TotalRequests }}</span>
+      </div>
+      <div class="container-detail">
+        <label class="title">Error Percentage:</label>
+        <span class="metric-data">{{ printf "%.2f%%" .SummaryMetrics.ErrorPercentage }}</span>
+      </div>
+      <div class="container-detail">
+        <label class="title">Requests Per Second:</label>
+        <span class="metric-data">{{ printf "%.2f req/sec" .SummaryMetrics.RequestsPerSecond }}</span>
+      </div>
+      <div class="container-detail">
+        <label class="title">Average Response Time:</label>
+        <span class="metric-data">{{ printf "%.2f ms" .SummaryMetrics.AvgRespTime }}</span>
+      </div>
+    </div>
+
+    <canvas id="response_time_line_chart" width="400" height="200"></canvas>
+    <script>
+      var ctx = document.getElementById('response_time_line_chart').getContext('2d');
       var chart = new Chart(ctx, {
         type: 'line',
         data: {
           labels: [{{range $k, $v := .AggregateMetricsMap}}{{$k}},{{end}}],
           datasets: [{
-            label: 'Resp Duration_l',
+            label: 'Mean',
             data: [{{range $k, $v := .AggregateMetricsMap}}{{$v.RespDurationStat.Mean}},{{end}}],
+            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+            borderColor: 'rgba(255, 99, 132, 1)',
+            borderWidth: 1,
+            tension: 0.1
+          },
+{
+            label: 'P90',
+            data: [{{range $k, $v := .AggregateMetricsMap}}{{$v.RespDurationStat.P90}},{{end}}],
+            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+            borderColor: 'rgba(255, 99, 132, 1)',
+            borderWidth: 1,
+            tension: 0.1
+          },
+{
+            label: 'P95',
+            data: [{{range $k, $v := .AggregateMetricsMap}}{{$v.RespDurationStat.P95}},{{end}}],
+            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+            borderColor: 'rgba(255, 99, 132, 1)',
+            borderWidth: 1,
+            tension: 0.1
+          },
+{
+            label: 'P99',
+            data: [{{range $k, $v := .AggregateMetricsMap}}{{$v.RespDurationStat.P99}},{{end}}],
             backgroundColor: 'rgba(255, 99, 132, 0.2)',
             borderColor: 'rgba(255, 99, 132, 1)',
             borderWidth: 1,
@@ -101,10 +118,154 @@
               ticks: {
                 beginAtZero: true
               }
-            }]
-          }
+            }],
+            x: {
+        display: true,
+        title: {
+          display: true,
+          text: 'Time'
+        }
+      },
+      y: {
+        display: true,
+        title: {
+          display: true,
+          text: 'ms'
+        }
+      }
+          },
+          plugins: {
+    colors: {
+      forceOverride: true
+    },
+    title: {
+      display: true,
+      text: "Response Time"
+    },
+  }
+  trendlineLinear: {
+		colorMin: "red",
+		colorMax: "green",
+		lineStyle: "dotted|solid",
+		width: 2,
+		xAxisKey: "time" (optional),
+		yAxisKey: "usage" (optional),
+		projection: true|false (optional)
+	}
         }
       });
     </script>
+
+    <canvas id="server_processing_line_chart" width="400" height="200"></canvas>
+    <script>
+      var ctx = document.getElementById('server_processing_line_chart').getContext('2d');
+      var chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: [{{range $k, $v := .AggregateMetricsMap}}{{$k}},{{end}}],
+          datasets: [{
+            label: 'Mean',
+            data: [{{range $k, $v := .AggregateMetricsMap}}{{$v.ServerProcessingStat.Mean}},{{end}}],
+            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+            borderColor: 'rgba(255, 99, 132, 1)',
+            borderWidth: 1,
+            tension: 0.1
+          },
+{
+            label: 'P90',
+            data: [{{range $k, $v := .AggregateMetricsMap}}{{$v.ServerProcessingStat.P90}},{{end}}],
+            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+            borderColor: 'rgba(255, 99, 132, 1)',
+            borderWidth: 1,
+            tension: 0.1
+          },
+{
+            label: 'P95',
+            data: [{{range $k, $v := .AggregateMetricsMap}}{{$v.ServerProcessingStat.P95}},{{end}}],
+            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+            borderColor: 'rgba(255, 99, 132, 1)',
+            borderWidth: 1,
+            tension: 0.1
+          },
+{
+            label: 'P99',
+            data: [{{range $k, $v := .AggregateMetricsMap}}{{$v.ServerProcessingStat.P99}},{{end}}],
+            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+            borderColor: 'rgba(255, 99, 132, 1)',
+            borderWidth: 1,
+            tension: 0.1
+          }]
+        },
+        options: {
+          scales: {
+            yAxes: [{
+              ticks: {
+                beginAtZero: true
+              }
+            }],
+            x: {
+        display: true,
+        title: {
+          display: true,
+          text: 'Time'
+        }
+      },
+      y: {
+        display: true,
+        title: {
+          display: true,
+          text: 'ms'
+        }
+      }
+          },
+          plugins: {
+    colors: {
+      forceOverride: true
+    },
+    title: {
+      display: true,
+      text: "Server Processing Time"
+    },
+  }
+        }
+      });
+    </script>
+
+  <canvas id="status_codes_histogram" width="400" height="200"></canvas>
+  <script>
+    const statusCodes = {{.SummaryMetrics.StatusCodes}};
+    var ctx = document.getElementById('status_codes_histogram').getContext('2d');
+    var chart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+                labels: Object.keys(statusCodes),
+                datasets: [{
+                    data: Object.values(statusCodes),
+                    borderWidth: 1
+                }]
+            },
+      options: {
+        scales: {
+          yAxes: [{
+            ticks: {
+              beginAtZero: true
+            }
+          }],
+        },
+        plugins: {
+    colors: {
+      forceOverride: true
+    },
+    title: {
+      display: true,
+      text: "Status Codes"
+    },
+    legend: {
+      display: false
+    }
+  }
+      }
+    });
+  </script>
   </body>
 </html>

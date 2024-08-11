@@ -1,4 +1,4 @@
-package bam
+package uboa
 
 import (
 	"encoding/json"
@@ -15,6 +15,7 @@ type SummaryMetrics struct {
 	RequestsPerSecond float64     `json:"requests_per_second"`
 	StatusCodes       map[int]int `json:"status_codes"`
 	AvgRespTime       float64     `json:"avg_resp_time"`
+	RespSizePerSec    float64     `json:"resp_per_sec"`
 }
 
 type AggregateMetrics struct {
@@ -31,6 +32,7 @@ type Metrics struct {
 	ContentTransfer  float64 `json:"content_transfer"`
 	RespDuration     float64 `json:"resp_duration"`
 	StatusCode       int     `json:"status_code"`
+	RespSize         int64   `json:"resp_size"`
 	Error            string  `json:"error"`
 }
 
