@@ -12,7 +12,6 @@ To use uboa, simply run the command `uboa` followed by the required flags and op
 #### Required Flags
 
 * `-u` or `--url`: The target URL to test (required)
-* `-m` or `--method`: The HTTP method for requests (default: GET)
 
 #### Optional Flags
 
