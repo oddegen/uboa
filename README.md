@@ -26,6 +26,10 @@ To use uboa, simply run the command `uboa` followed by the required flags and op
 * `-T` or `--timeout`: HTTP client timeout in seconds (default: 5)
 * `-k` or `--keep-alive`: Enable HTTP keep-alive connections
 * `-r` or `--max-retries`: Maximum allowed retry before erroring (default: 3)
+* `-i` or `--insecure`: Use this flag to skip SSL verification
+* `-ca` or `--ca`: CA certificate to verify peer against
+* `-cert` or `--cert`: Client authentication certificate
+* `-key` or `--key`: Client authentication key
 
 ### Example Usage
 
@@ -35,9 +39,23 @@ uboa -url https://google.com -method GET -concurrency 10 -requests 1000
 ```
 This command will send 1000 GET requests to `https://google.com` using 10 concurrent clients.
 
+### Installation  
+Grab a pre-built binary from the [GitHub Releases page](https://github.com/oddegen/uboa/releases). You can optionally put the **uboa** binary in your `PATH` so you can run uboa from any location. Alternative you can build it from source,
+
+To build uboa from source, you'll need to have Go installed on your system. Here are the steps:
+
+1. Clone the repository: `git clone https://github.com/oddegen/uboa.git`
+2. Change into the repository directory: `cd uboa`
+3. Run `go build` to build the binary
+4. Run `./uboa` to run the tool
+
 ### Output
 
 uboa outputs the results of the load testing in a human-readable format. You can customize the output format using the `-json` or `-html` flags.
+Here is an example of the rendered HTML output:
+
+<img src="https://imgur.com/3oyxpH5" />
+<img src="https://imgur.com/T9Ak0N1" />
 
 ### Contributing
 
@@ -46,5 +64,3 @@ uboa is an open-source project and welcomes contributions from the community. If
 ### License
 
 uboa is licensed under the MIT License. See the [LICENSE.md](LICENSE.md) file for more information.
-
-I hope this helps! Let me know if you have any questions or need further clarification.
