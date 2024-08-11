@@ -254,7 +254,8 @@ func (b *Uboa) Load() *ResultMetrics {
 
 	duration := time.Since(start).Seconds()
 	s.RequestsPerSecond = float64(s.TotalRequests) / duration
-	s.ErrorPercentage = float64(failedRequests) / float64(s.TotalRequests) * 100
+	s.FailedRequests = failedRequests
+	s.SuccessFulRequests = s.TotalRequests - failedRequests
 	slices.Sort(respDur)
 	s.AvgRespTime = stat.Mean(respDur, nil)
 	s.RespSizePerSec = float64(totalRespSize) / duration

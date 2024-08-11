@@ -10,12 +10,13 @@ type ResultMetrics struct {
 }
 
 type SummaryMetrics struct {
-	TotalRequests     int         `json:"total_requests"`
-	ErrorPercentage   float64     `json:"error_percentage"`
-	RequestsPerSecond float64     `json:"requests_per_second"`
-	StatusCodes       map[int]int `json:"status_codes"`
-	AvgRespTime       float64     `json:"avg_resp_time"`
-	RespSizePerSec    float64     `json:"resp_per_sec"`
+	TotalRequests      int         `json:"total_requests"`
+	FailedRequests     int         `json:"failed_requests"`
+	SuccessFulRequests int         `json:"successful_requests"`
+	RequestsPerSecond  float64     `json:"requests_per_second"`
+	StatusCodes        map[int]int `json:"status_codes"`
+	AvgRespTime        float64     `json:"avg_resp_time"`
+	RespSizePerSec     float64     `json:"resp_per_sec"`
 }
 
 type AggregateMetrics struct {

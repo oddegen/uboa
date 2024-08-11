@@ -208,7 +208,7 @@ func output(b *uboa.Uboa, skip bool) error {
 
 	table.AddRow("Total Requests:", fmt.Sprintf("%d reqs", b.Template.Result.TotalRequests))
 	table.AddRow("Average Response Time:", fmt.Sprintf("%.2f ms", b.Template.Result.AvgRespTime))
-	table.AddRow("Error rate:", fmt.Sprintf("%.2f%%", b.Template.Result.ErrorPercentage))
+	table.AddRow("Error rate:", fmt.Sprintf("%.2f%%", (float64(b.Template.Result.FailedRequests)/float64(b.Template.Result.TotalRequests))*100))
 	table.AddRow("Request Per Second:", fmt.Sprintf("%.2f req/s", b.Template.Result.RequestsPerSecond))
 	table.AddRow("ResponseSize Per Second:", fmt.Sprintf("%.2f bytes/s", b.Template.Result.RespSizePerSec))
 	fmt.Println("\n\nSummary:")
