@@ -268,5 +268,5 @@ COPYRIGHT:
 		whiteBold("DESCRIPTION"),
 		whiteBold("COMMANDS"),
 		whiteBold("GLOBAL OPTIONS"),
-		cyan("$ uboa run -u https://dummyjson.com/auth/RESOURCE -c 10 -n 100"))
+		cyan("$ uboa -u https://dummyjson.com/auth/RESOURCE -c 10 -n 100"))
 }
