@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Metrics Visualization</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      .container {
+        width: 80%;
+        margin: auto;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+      }
+      th,
+      td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+      }
+      th {
+        background-color: #f4f4f4;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+  <h1>Result Metrics</h1>
+  <h2>Summary Metrics</h2>
+  <table>
+    <tr>
+      <th>Total Requests:</th>
+      <td>{{ .SummaryMetrics.TotalRequests }}</td>
+    </tr>
+    <tr>
+      <th>Error Percentage:</th>
+      <td>{{ printf "%.2f%%" .SummaryMetrics.ErrorPercentage }}</td>
+    </tr>
+    <tr>
+      <th>Requests Per Second:</th>
+      <td>{{ printf "%.2f req/sec" .SummaryMetrics.RequestsPerSecond }}</td>
+    </tr>
+    <tr>
+      <th>Average Response Time:</th>
+      <td>{{ printf "%.2f sec" .SummaryMetrics.AvgRespTime }}</td>
+    </tr>
+  </table>
+
+  <h2>Status Codes Histogram</h2>
+  <canvas id="status_codes_histogram" width="800" height="400"></canvas>
+  <script>
+    var ctx = document.getElementById('status_codes_histogram').getContext('2d');
+    var chart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: [{{ range $key, $value := .SummaryMetrics.StatusCodes }}{{ $key }},{{ end }}],
+        datasets: [{
+          label: 'Status Codes',
+          data: [{{ range $key, $value := .SummaryMetrics.StatusCodes }}{{ $value }},{{ end }}],
+          backgroundColor: 'rgba(255, 99, 132, 0.2)',
+          borderColor: 'rgba(255, 99, 132, 1)',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        scales: {
+          yAxes: [{
+            ticks: {
+              beginAtZero: true
+            }
+          }]
+        }
+      }
+    });
+  </script>
+
+  <h2>Aggregate Metrics Line Charts</h2>
+    <h3>Aggregate Metrics</h3>
+    <canvas id="aggregate_metrics_line_chart" width="800" height="400"></canvas>
+    <script>
+      var ctx = document.getElementById('aggregate_metrics_line_chart').getContext('2d');
+      var chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: [{{range $k, $v := .AggregateMetricsMap}}{{$k}},{{end}}],
+          datasets: [{
+            label: 'Resp Duration_l',
+            data: [{{range $k, $v := .AggregateMetricsMap}}{{$v.RespDurationStat.Mean}},{{end}}],
+            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+            borderColor: 'rgba(255, 99, 132, 1)',
+            borderWidth: 1,
+            tension: 0.1
+          }]
+        },
+        options: {
+          scales: {
+            yAxes: [{
+              ticks: {
+                beginAtZero: true
+              }
+            }]
+          }
+        }
+      });
+    </script>
+  </body>
+</html>
