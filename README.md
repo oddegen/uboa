@@ -54,8 +54,8 @@ To build uboa from source, you'll need to have Go installed on your system. Here
 uboa outputs the results of the load testing in a human-readable format. You can customize the output format using the `-json` or `-html` flags.
 Here is an example of the rendered HTML output:
 
-<img src="https://imgur.com/3oyxpH5" />
-<img src="https://imgur.com/T9Ak0N1" />
+![screenshot_1](https://imgur.com/3oyxpH5.png)
+![screenshot_2](https://i.imgur.com/T9Ak0N1.png)
 
 ### Contributing
 
