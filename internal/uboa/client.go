@@ -46,7 +46,6 @@ func (b *Uboa) Send(ctx context.Context, outChan chan<- *Metrics) {
 				outChan <- &Metrics{
 					Error: fmt.Sprintf("unable to connect to host %v: %v", addr, err),
 				}
-				return
 			}
 			t2 = time.Now()
 		},
