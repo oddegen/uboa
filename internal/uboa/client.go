@@ -169,7 +169,7 @@ func (u *Uboa) Load() *ResultMetrics {
 			BarEnd:        "[light_cyan]]",
 		}))
 	clor := color.New(color.FgHiCyan).Add(color.Italic)
-	clor.Printf("\nStarting Load Test with %d requests using (%d concurrent users\n\n", u.Requests, u.Clients)
+	clor.Printf("\nStarting Load Test with %d requests using %d concurrent users\n\n", u.Requests, u.Clients)
 
 	u.Client = &http.Client{
 		Timeout: time.Second * time.Duration(u.Timeout),

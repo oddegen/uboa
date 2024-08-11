@@ -99,8 +99,9 @@ func Run() {
 				Value:   3,
 			},
 			&cli.BoolFlag{
-				Name:  "insecure",
-				Usage: "use this flag to skip ssl verification",
+				Name:    "insecure",
+				Aliases: []string{"i"},
+				Usage:   "use this flag to skip ssl verification",
 			},
 			&cli.StringFlag{
 				Name:  "ca",
