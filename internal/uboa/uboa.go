@@ -1,6 +1,7 @@
 package uboa
 
 import (
+	"crypto/tls"
 	"net/http"
 	"time"
 
@@ -22,4 +23,6 @@ type Uboa struct {
 	Client                 *http.Client
 	DisableKeepAlives      bool
 	MaxRetries             int
+	TlsConfig              *tls.Config
+	IsTls                  bool
 }

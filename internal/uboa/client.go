@@ -17,8 +17,8 @@ import (
 	"gonum.org/v1/gonum/stat"
 )
 
-func (b *Uboa) Send(ctx context.Context, outChan chan<- *Metrics) {
-	req, err := http.NewRequest(b.Method, b.URL, bytes.NewBufferString(b.Body))
+func (u *Uboa) Send(ctx context.Context, outChan chan<- *Metrics) {
+	req, err := http.NewRequest(u.Method, u.URL, bytes.NewBufferString(u.Body))
 	if err != nil {
 		outChan <- &Metrics{
 			Error: fmt.Sprintf("Error creating requests: %v", err),
@@ -26,43 +26,66 @@ func (b *Uboa) Send(ctx context.Context, outChan chan<- *Metrics) {
 		return
 	}
 
-	for k, v := range b.Headers {
+	for k, v := range u.Headers {
 		req.Header.Add(k, v)
 	}
 
-	var t0, t1, t2, t3, t4 time.Time
-
+	var t0, t1, t2, t3, t4, t5 time.Time
+	var reused bool
 	trace := &httptrace.ClientTrace{
 		DNSStart: func(_ httptrace.DNSStartInfo) { t0 = time.Now() },
-		DNSDone:  func(_ httptrace.DNSDoneInfo) { t1 = time.Now() },
+		DNSDone: func(_ httptrace.DNSDoneInfo) {
+			t1 = time.Now()
+		},
 		ConnectStart: func(_, _ string) {
+			t2 = time.Now()
+
 			if t0.IsZero() {
 				// connecting directly to IP
-				t1 = time.Now()
+				t0 = t2
+				t1 = t2
 			}
 		},
 		ConnectDone: func(net, addr string, err error) {
-			if err != nil {
-				outChan <- &Metrics{
-					Error: fmt.Sprintf("unable to connect to host %v: %v", addr, err),
-				}
-			}
-			t2 = time.Now()
+			t3 = time.Now()
 		},
-		GotConn:              func(_ httptrace.GotConnInfo) { t3 = time.Now() },
-		GotFirstResponseByte: func() { t4 = time.Now() },
-		// Todo: Add tls support
-		// TLSHandshakeStart:    func() { t5 = time.Now() },
+		GotConn: func(g httptrace.GotConnInfo) {
+			if g.Reused {
+				reused = true
+			}
+		},
+		WroteRequest: func(wri httptrace.WroteRequestInfo) {
+			t4 = time.Now()
+
+			if t0.IsZero() || t2.IsZero() {
+				now := t3
+				t0 = now
+				t1 = now
+				t2 = now
+				t3 = now
+
+			}
+
+			if reused {
+				now := t4
+				t0 = now
+				t1 = now
+				t2 = now
+				t3 = now
+			}
+		},
+		GotFirstResponseByte: func() { t5 = time.Now() },
+		TLSHandshakeStart:    func() { u.IsTls = true },
 		// TLSHandshakeDone:     func(_ tls.ConnectionState, _ error) { t6 = time.Now() },
 	}
 
 	req = req.WithContext(httptrace.WithClientTrace(ctx, trace))
 	var resp *http.Response
-	maxRetries := b.MaxRetries
+	maxRetries := u.MaxRetries
 	baseDelay := 100 * time.Millisecond
 
 	for i := 0; i < maxRetries; i++ {
-		resp, err = b.Client.Do(req)
+		resp, err = u.Client.Do(req)
 		if err == nil {
 			break
 		}
@@ -104,25 +127,25 @@ func (b *Uboa) Send(ctx context.Context, outChan chan<- *Metrics) {
 	respSize, _ := io.Copy(io.Discard, resp.Body)
 	resp.Body.Close()
 
-	b.Bar.Add(1)
-	t5 := time.Now()
+	u.Bar.Add(1)
+	t6 := time.Now()
 
 	out := &Metrics{
 		DNSLookup:        float64(t1.Sub(t0).Milliseconds()),
-		TCPConn:          float64(t2.Sub(t1).Milliseconds()),
-		ServerProcessing: float64(t4.Sub(t3).Milliseconds()),
-		ContentTransfer:  float64(t5.Sub(t4).Milliseconds()),
+		TCPConn:          float64(t3.Sub(t2).Milliseconds()),
+		ServerProcessing: float64(t5.Sub(t4).Milliseconds()),
+		ContentTransfer:  float64(t6.Sub(t5).Milliseconds()),
 		StatusCode:       resp.StatusCode,
 		RespSize:         respSize,
 	}
 
-	out.RespDuration = out.DNSLookup + out.TCPConn + out.ServerProcessing + out.ContentTransfer
+	out.RespDuration = float64(t6.Sub(t0).Milliseconds())
 
 	outChan <- out
 
 }
 
-func (b *Uboa) Load() *ResultMetrics {
+func (u *Uboa) Load() *ResultMetrics {
 	var tcpDur []float64
 	var respDur []float64
 	var serverDur []float64
@@ -132,11 +155,11 @@ func (b *Uboa) Load() *ResultMetrics {
 
 	ag := make(map[string]AggregateMetrics)
 	s := &SummaryMetrics{
-		TotalRequests: b.Requests,
+		TotalRequests: u.Requests,
 		StatusCodes:   make(map[int]int),
 	}
 
-	b.Bar = progressbar.NewOptions(b.Requests,
+	u.Bar = progressbar.NewOptions(u.Requests,
 		progressbar.OptionEnableColorCodes(true),
 		progressbar.OptionSetTheme(progressbar.Theme{
 			Saucer:        "[_cyan_] [reset]",
@@ -146,31 +169,32 @@ func (b *Uboa) Load() *ResultMetrics {
 			BarEnd:        "[light_cyan]]",
 		}))
 	clor := color.New(color.FgHiCyan).Add(color.Italic)
-	clor.Printf("\nStarting Load Test with %d requests using %d concurrent users\n\n", b.Requests, b.Clients)
+	clor.Printf("\nStarting Load Test with %d requests using (%d concurrent users\n\n", u.Requests, u.Clients)
 
-	b.Client = &http.Client{
-		Timeout: time.Second * time.Duration(b.Timeout),
+	u.Client = &http.Client{
+		Timeout: time.Second * time.Duration(u.Timeout),
 		Transport: &http.Transport{
+			TLSClientConfig:     u.TlsConfig,
 			MaxIdleConnsPerHost: 10000,
 			DisableCompression:  false,
-			DisableKeepAlives:   b.DisableKeepAlives, // Enable keep-alives
+			DisableKeepAlives:   u.DisableKeepAlives, // Enable keep-alives
 		},
 	}
 
 	var wg sync.WaitGroup
-	m := make(chan *Metrics, b.Requests)
+	m := make(chan *Metrics, u.Requests)
 	ticker := time.NewTicker(10 * time.Millisecond)
 	defer ticker.Stop()
 
 	ctx := context.Background()
 
-	reqPerClient := b.Requests / b.Clients
-	extraReq := b.Requests % b.Clients
+	reqPerClient := u.Requests / u.Clients
+	extraReq := u.Requests % u.Clients
 
-	wg.Add(b.Clients)
+	wg.Add(u.Clients)
 	start := time.Now()
 
-	for i := 0; i < b.Clients; i++ {
+	for i := 0; i < u.Clients; i++ {
 		go func(id int) {
 			defer wg.Done()
 			numReq := reqPerClient
@@ -178,7 +202,7 @@ func (b *Uboa) Load() *ResultMetrics {
 				numReq++
 			}
 			for j := 0; j < numReq; j++ {
-				b.Send(ctx, m)
+				u.Send(ctx, m)
 			}
 		}(i)
 	}

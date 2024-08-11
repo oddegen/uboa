@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -96,6 +98,22 @@ func Run() {
 				Usage:   "Maximum allowed retry before erroring",
 				Value:   3,
 			},
+			&cli.BoolFlag{
+				Name:  "insecure",
+				Usage: "use this flag to skip ssl verification",
+			},
+			&cli.StringFlag{
+				Name:  "ca",
+				Usage: "ca certificate to verify peer against",
+			},
+			&cli.StringFlag{
+				Name:  "cert",
+				Usage: "client authentication certificate",
+			},
+			&cli.StringFlag{
+				Name:  "key",
+				Usage: "client authentication key",
+			},
 		},
 		Action: validate,
 	}
@@ -157,6 +175,31 @@ func validate(c *cli.Context) error {
 		outputFile = time.Now().Format("2006-01-02") + "_" + strings.ToLower(method) + "_upoa-result"
 	}
 
+	tlsConfig := new(tls.Config)
+	if c.Bool("insecure") {
+		tlsConfig.InsecureSkipVerify = true
+	}
+
+	if c.String("ca") != "" {
+		pemCerts, err := os.ReadFile(c.String("ca"))
+		if err != nil {
+			return err
+		}
+		ca := x509.NewCertPool()
+		if !ca.AppendCertsFromPEM(pemCerts) {
+			return fmt.Errorf("failed to read CA from PEM")
+		}
+		tlsConfig.RootCAs = ca
+	}
+
+	if c.String("cert") != "" && c.String("key") != "" {
+		cert, err := tls.LoadX509KeyPair(c.String("cert"), c.String("key"))
+		if err != nil {
+			return err
+		}
+		tlsConfig.Certificates = []tls.Certificate{cert}
+	}
+
 	b := &uboa.Uboa{
 		URL:               urlstr,
 		Method:            method,
@@ -169,6 +212,7 @@ func validate(c *cli.Context) error {
 		DisableKeepAlives: keepAlive,
 		Timeout:           time.Duration(timeout),
 		MaxRetries:        maxRetries,
+		TlsConfig:         tlsConfig,
 	}
 
 	a := b.Load()
