@@ -88,9 +88,9 @@ func Run() {
 				Value:   5,
 			},
 			&cli.BoolFlag{
-				Name:    "keep-alive",
+				Name:    "disable-keep-alive",
 				Aliases: []string{"k"},
-				Usage:   "Enable HTTP keep-alive connections",
+				Usage:   "Disable HTTP keep-alive connections",
 			},
 			&cli.IntFlag{
 				Name:    "max-retries",
@@ -136,7 +136,7 @@ func validate(c *cli.Context) error {
 	outputFile := c.String("output")
 	concurrency := c.Int("concurrency")
 	requests := c.Int("requests")
-	keepAlive := c.Bool("keep-alive")
+	keepAlive := c.Bool("disable-keep-alive")
 	timeout := c.Int("timeout")
 	maxRetries := c.Int("max-retries")
 
