@@ -3,6 +3,13 @@
 
 uboa is a HTTP load testing tool designed to help you evaluate the performance and reliability of your web applications under various levels of concurrent traffic.
 
+### Installation
+
+Grab a pre-built binary from the [GitHub Releases page](https://github.com/oddegen/uboa/releases) or run the following command to install the latest version:
+
+```bash
+curl -s https://raw.githubusercontent.com/oddegen/uboa/main/scripts/install.sh | bash
+```
 ### Getting Started
 
 To use uboa, simply run the command `uboa` followed by the required flags and options.
