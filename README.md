@@ -10,6 +10,15 @@ Grab a pre-built binary from the [GitHub Releases page](https://github.com/oddeg
 ```bash
 curl -s https://raw.githubusercontent.com/oddegen/uboa/main/scripts/install.sh | bash
 ```
+Alternatively you can build it from source,
+
+To build uboa from source, you'll need to have Go installed on your system. Here are the steps:
+
+1. Clone the repository: `git clone https://github.com/oddegen/uboa.git`
+2. Change into the repository directory: `cd uboa`
+3. Run `go build` to build the binary
+4. Run `./uboa` to run the tool
+
 ### Getting Started
 
 To use uboa, simply run the command `uboa` followed by the required flags and options.
@@ -45,16 +54,6 @@ Here's an example of how to use uboa:
 uboa -url https://google.com -method GET -concurrency 10 -requests 1000
 ```
 This command will send 1000 GET requests to `https://google.com` using 10 concurrent clients.
-
-### Installation  
-Grab a pre-built binary from the [GitHub Releases page](https://github.com/oddegen/uboa/releases). You can optionally put the **uboa** binary in your `PATH` so you can run uboa from any location. Alternative you can build it from source,
-
-To build uboa from source, you'll need to have Go installed on your system. Here are the steps:
-
-1. Clone the repository: `git clone https://github.com/oddegen/uboa.git`
-2. Change into the repository directory: `cd uboa`
-3. Run `go build` to build the binary
-4. Run `./uboa` to run the tool
 
 ### Output
 
